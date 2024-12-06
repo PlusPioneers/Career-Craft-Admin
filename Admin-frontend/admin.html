@@ -160,16 +160,13 @@
                         <th>Course ID</th>
                         <th>Course Name</th>
                         <th>Category</th>
+                        <th>Level</th>
                         <th>Duration</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="coursesTableBody">
                     <tr>
-                        <td>JAVA-001</td>
-                        <td>Java For Beginners</td>
-                        <td>Programming</td>
-                        <td>4 Weeks</td>
+                        
                         <td>
                             <button class="btn btn-sm btn-primary me-2" data-bs-toggle="modal" data-bs-target="#editCourseModal">
                                 <i class="fas fa-edit"></i>
@@ -466,7 +463,7 @@
                     <tr>
                         <td>${courseId}</td>
                         <td>${courseData.name}</td>
-                        <td>${courseData.field}</td>
+                        <td>${courseData.category}</td>
                         <td>${courseData.level}</td>
                         <td>${courseData.duration}</td>
                         <td>
@@ -475,7 +472,7 @@
                                 data-name="${courseData.name}"
                                 data-instructor="${courseData.instructor}"
                                 data-description="${courseData.description}"
-                                data-field="${courseData.field}"
+                                data-category="${courseData.category}"
                                 data-level="${courseData.level}"
                                 data-duration="${courseData.duration}"
                                 data-bs-toggle="modal" 
@@ -498,7 +495,7 @@
                     const courseName = e.currentTarget.getAttribute('data-name');
                     const courseInstructor = e.currentTarget.getAttribute('data-instructor');
                     const courseDescription = e.currentTarget.getAttribute('data-description');
-                    const courseField = e.currentTarget.getAttribute('data-field');
+                    const courseCategory = e.currentTarget.getAttribute('data-category');
                     const courseLevel = e.currentTarget.getAttribute('data-level');
                     const courseDuration = e.currentTarget.getAttribute('data-duration');
 
@@ -810,6 +807,18 @@ onAuthStateChanged(auth, (user) => {
 document.getElementById('userSearch').addEventListener('input', (e) => {
     const searchTerm = e.target.value.toLowerCase();
     const rows = document.querySelectorAll('#usersTableBody tr');
+    rows.forEach(row => {
+        const cells = row.getElementsByTagName('td');
+        const isVisible = Array.from(cells).some(cell => 
+            cell.textContent.toLowerCase().includes(searchTerm)
+        );
+        row.style.display = isVisible ? '' : 'none';
+    });
+});
+// Search functionality
+document.getElementById('courseSearch').addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#coursesTableBody tr');
     rows.forEach(row => {
         const cells = row.getElementsByTagName('td');
         const isVisible = Array.from(cells).some(cell => 
