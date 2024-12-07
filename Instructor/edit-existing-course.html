@@ -514,22 +514,47 @@ document.getElementById('saveEditCourseBtn').addEventListener('click', () => {
         });
 });
 
-// Utility functions for tag processing (these can be added to the existing script)
-function preprocessText(text) {
-    // Convert to lowercase and remove special characters
-    return text.toLowerCase().replace(/[^a-zA-Z\s]/g, '');
-}
 
-function extractKeywords(text) {
-    const stopWords = new Set([
-        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'
-    ]);
+function getPossibleTags(keywords) {
+        // Predefined list of possible tags
+        const allTags = [
+            { name: 'Programming', keywords: ['code', 'programming', 'software', 'develop'] },
+            { name: 'Web Development', keywords: ['web', 'html', 'css', 'javascript', 'frontend'] },
+            { name: 'Data Science', keywords: ['data', 'analysis', 'machine', 'learning', 'algorithm'] },
+            { name: 'Cloud Computing', keywords: ['cloud', 'server', 'network', 'infrastructure'] },
+            { name: 'Machine Learning', keywords: ['machine', 'learning', 'ai', 'intelligence', 'neural'] },
+            { name: 'Cybersecurity', keywords: ['security', 'network', 'protect', 'cyber'] },
+            { name: 'Mobile Development', keywords: ['mobile', 'app', 'android', 'ios', 'smartphone'] },
+            { name: 'Database', keywords: ['database', 'sql', 'query', 'storage', 'data'] },
+            { name: 'Backend Development', keywords: ['backend', 'server', 'api', 'database'] },
+            { name: 'Frontend Development', keywords: ['frontend', 'ui', 'ux', 'design', 'interface'] }
+        ];
 
-    // Split text into words, filter out stop words and short words
-    return text.split(/\s+/)
-        .filter(word => word.length > 2 && !stopWords.has(word))
-        .slice(0, 10);  // Limit to 10 keywords
-}
+        // Find tags that match any of the input keywords
+        return allTags.filter(tag => 
+            tag.keywords.some(tagKeyword => 
+                keywords.some(keyword => keyword.includes(tagKeyword))
+            )
+        );
+    }
+
+    // Existing utility functions
+    function preprocessText(text) {
+        // Convert to lowercase and remove special characters
+        return text.toLowerCase().replace(/[^a-zA-Z\s]/g, '');
+    }
+
+    function extractKeywords(text) {
+        const stopWords = new Set([
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'
+        ]);
+
+        // Split text into words, filter out stop words and short words
+        return text.split(/\s+/)
+            .filter(word => word.length > 2 && !stopWords.has(word))
+            .slice(0, 10);  // Limit to 10 keywords
+    }
+
 
 // Delete Course Function
 function deleteCourse(courseId) {
