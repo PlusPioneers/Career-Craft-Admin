@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Career Craft - Create New Course</title>
     
+    
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
@@ -322,104 +323,373 @@
     <!-- Firebase and Course Creation Script -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { 
+    getDatabase, 
+    ref as realtimeRef, 
+    set as realtimeSet 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+    getAuth 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
-    apiKey: "AIzaSyD-azey3wiBUtr_ujjzrwl3vFc0rGwBWII",
-    authDomain: "career-craft-1667.firebaseapp.com",
-    databaseURL: "https://career-craft-1667-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "career-craft-1667",
-    storageBucket: "career-craft-1667.firebasestorage.app",
-    messagingSenderId: "616676439535",
-    appId: "1:616676439535:web:2019ad5c6d122728c6721a"
+  apiKey: "AIzaSyD-azey3wiBUtr_ujjzrwl3vFc0rGwBWII",
+  authDomain: "career-craft-1667.firebaseapp.com",
+  databaseURL: "https://career-craft-1667-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "career-craft-1667",
+  storageBucket: "career-craft-1667.firebasestorage.app",
+  messagingSenderId: "616676439535",
+  appId: "1:616676439535:web:2019ad5c6d122728c6721a",
+  measurementId: "G-YND0YL7Y94"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+const db = getFirestore(app);
+const realtimeDB = getDatabase(app);
 const auth = getAuth(app);
 
-// Function to get instructor details from localStorage
+// Constants for lesson types
+const LESSON_TYPES = {
+    VIDEO: 'video',
+    QUIZ: 'quiz'
+};
+
+// Utility Functions
 function getInstructorDetails() {
     const storedDetails = localStorage.getItem('instructorDetails');
     return storedDetails ? JSON.parse(storedDetails) : null;
 }
 
-// YouTube link validation function
 function isValidYouTubeLink(url) {
     const youtubeRegex = /^(https?\:\/\/)?(www\.youtube\.com|youtu\.?be)\/.+$/;
     return youtubeRegex.test(url);
 }
 
-document.getElementById('courseCreationForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    // Validate YouTube link
-    const videoLink = document.getElementById('courseVideoLink').value;
-    if (!isValidYouTubeLink(videoLink)) {
-        alert('Please enter a valid YouTube link');
-        return;
-    }
-
-    // Get instructor details from localStorage
-    const instructorDetails = getInstructorDetails();
-    if (!instructorDetails) {
-        alert('Please log in to create a course');
-        return;
-    }
-
-    // Get current authenticated user
-    const user = auth.currentUser;
-    if (!user) {
-        alert('Please log in to create a course');
-        return;
-    }
-
-    // Collect selected tags
+function getSelectedTags() {
     const selectedTagElements = document.querySelectorAll('#selectedTags .selected-tag');
-    const selectedTags = Array.from(selectedTagElements).map(tagEl => 
+    return Array.from(selectedTagElements).map(tagEl => 
         tagEl.textContent.trim().replace('×', '').trim()
     );
+}
 
-    // Prepare course data
-    const courseData = {
-        name: document.getElementById('courseName').value,
-        description: document.getElementById('courseDescription').value,
-        category: document.getElementById('courseCategory').value,
-        level: document.getElementById('skillLevel').value,
-        duration: document.getElementById('courseDuration').value,
-        instructor: instructorDetails.name,
-        instructorUid: instructorDetails.uid,
-        videoLink: videoLink,
-        tags: selectedTags // Add tags to course data
-    };
+// Save course description to Realtime Database
+async function saveCourseDescriptionToRealtimeDB(courseData, courseId) {
+    try {
+        const instructorDetails = getInstructorDetails();
+        if (!instructorDetails) {
+            throw new Error('Instructor details not found');
+        }
 
-    // Reference to courses in Firebase
-    const coursesRef = ref(db, 'courses');
-    const newCourseRef = push(coursesRef);
+        // Changed reference to use courseId directly
+        const courseDescriptionRef = realtimeRef(realtimeDB, `courses/${courseId}`);
+        
+        // Save the course description data, including instructorUid
+        await realtimeSet(courseDescriptionRef, {
+            name: courseData.name,
+            description: courseData.description,
+            category: courseData.category,
+            level: courseData.level,
+            duration: courseData.duration,
+            instructor: courseData.instructor,
+            instructorUid: instructorDetails.uid, // Add instructorUid to the course data
+            videoLink: courseData.videoLink,
+            tags: courseData.tags,
+            id: courseId,
+            createdAt: new Date().toISOString()
+        });
 
-    // Save course to Firebase
-    set(newCourseRef, courseData)
-    .then(() => {
-        alert('Course created successfully!');
-        this.reset(); // Clear the form
+        console.log('Course description saved to Realtime Database');
+        return true;
+    } catch (error) {
+        console.error('Error saving course description to Realtime DB:', error);
+        alert('Failed to save course description. Please try again.');
+        return false;
+    }
+}
+
+// Save course and modules to Firestore
+async function saveCoursesToFirestore(courseData, modules) {
+    try {
+        // Save course to Firestore first
+        const courseRef = await addDoc(collection(db, 'courses'), {
+            ...courseData,
+            createdAt: serverTimestamp(),
+            moduleCount: modules.length
+        });
+        const courseId = courseRef.id;
+
+        // Save modules to Firestore with the same course ID
+        for (let [index, module] of modules.entries()) {
+            await addDoc(collection(db, 'courseModules'), {
+                courseId: courseId,
+                ...module,
+                moduleNumber: index + 1,
+                createdAt: serverTimestamp()
+            });
+        }
+
+        console.log('Course and modules saved to Firestore');
+        return courseId;
+    } catch (error) {
+        console.error('Error saving course to Firestore:', error);
+        alert('Failed to save course modules. Please try again.');
+        return null;
+    }
+}
+
+// Course Creation Form Submit Handler
+document.getElementById('courseCreationForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    // Validate instructor and authentication
+    const instructorDetails = getInstructorDetails();
+    const user = auth.currentUser;
+    
+    if (!instructorDetails || !user) {
+        alert('Please log in to create a course');
+        return;
+    }
+
+    try {
+        // Collect and validate modules
+        const moduleElements = document.querySelectorAll('.module-item');
+        const courseModules = [];
+
+        // Prepare main course data
+        const courseData = {
+            name: document.getElementById('courseName').value,
+            description: document.getElementById('courseDescription').value,
+            category: document.getElementById('courseCategory').value,
+            level: document.getElementById('skillLevel').value,
+            duration: document.getElementById('courseDuration').value,
+            instructor: instructorDetails.name,
+            instructorUid: instructorDetails.uid,
+            videoLink: document.getElementById('courseVideoLink').value,
+            tags: getSelectedTags()
+        };
+
+        // Process and save modules
+        for (let moduleEl of moduleElements) {
+            const moduleTitle = moduleEl.querySelector('.module-title').value;
+            const lessonType = moduleEl.querySelector('.lesson-type').value;
+            
+            let moduleData = {
+                title: moduleTitle,
+                type: lessonType
+            };
+
+            // Process different lesson types
+            switch(lessonType) {
+                case LESSON_TYPES.VIDEO:
+                    const videoLink = moduleEl.querySelector('.video-link').value;
+                    if (!isValidYouTubeLink(videoLink)) {
+                        alert(`Invalid YouTube link in ${moduleTitle}`);
+                        return;
+                    }
+                    moduleData.videoLink = videoLink;
+                    break;
+
+                case LESSON_TYPES.QUIZ:
+                    const quizQuestions = [];
+                    moduleEl.querySelectorAll('.question-item').forEach(questionEl => {
+                        const questionText = questionEl.querySelector('.question-text').value;
+                        const options = Array.from(questionEl.querySelectorAll('input[type="text"]:not(.question-text)'))
+                            .map(input => input.value);
+                        const correctAnswerIndex = questionEl.querySelector('input[type="radio"]:checked')?.value;
+
+                        quizQuestions.push({
+                            question: questionText,
+                            options: options,
+                            correctAnswer: correctAnswerIndex
+                        });
+                    });
+                    moduleData.quiz = quizQuestions;
+                    break;
+            }
+
+            courseModules.push(moduleData);
+        }
+
+        // Save course and modules to Firestore first to get a consistent course ID
+        const courseId = await saveCoursesToFirestore(courseData, courseModules);
         
-        // Clear selected tags display
-        const selectedTagsContainer = document.getElementById('selectedTags');
-        selectedTagsContainer.innerHTML = '<small class="text-muted">No tags selected</small>';
-        
-        // Clear tag suggestions
-        const suggestionContainer = document.getElementById('tagSuggestions');
-        suggestionContainer.innerHTML = '<span class="badge bg-secondary">No suggestions yet</span>';
-        
-        // Optional: Redirect to course management page
-        window.location.href = 'instructor-course-management.html';
-    })
-    .catch((error) => {
+        if (!courseId) {
+            throw new Error('Failed to generate course ID');
+        }
+
+        // Save course description to Realtime Database using the same course ID
+        const descriptionSaved = await saveCourseDescriptionToRealtimeDB(courseData, courseId);
+
+        if (descriptionSaved) {
+            alert('Course created successfully!');
+            window.location.href = 'instructor-course-management.html';
+        }
+
+    } catch (error) {
         console.error('Error creating course:', error);
         alert('Failed to create course. Please try again.');
-    });
+    }
 });
+// Create Module Section
+function createModuleSection() {
+    const moduleContainer = document.createElement('div');
+    moduleContainer.id = 'modulesContainer';
+    moduleContainer.innerHTML = `
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5>Course Modules</h5>
+                <button type="button" class="btn btn-primary" id="addModuleBtn">
+                    <i class="fas fa-plus"></i> Add Module
+                </button>
+            </div>
+            <div class="card-body" id="modulesList">
+                <!-- Dynamically added modules will appear here -->
+            </div>
+        </div>
+    `;
+
+    document.querySelector('#courseDescription').closest('.row').after(moduleContainer);
+    document.getElementById('addModuleBtn').addEventListener('click', addNewModule);
+}
+
+function addNewModule() {
+    const modulesList = document.getElementById('modulesList');
+    const moduleIndex = modulesList.children.length + 1;
+
+    const moduleElement = document.createElement('div');
+    moduleElement.classList.add('module-item', 'card', 'mb-3');
+    moduleElement.innerHTML = `
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6>Module ${moduleIndex}</h6>
+            <button type="button" class="btn btn-danger btn-sm remove-module">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Module Title</label>
+                    <input type="text" class="form-control module-title" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Lesson Type</label>
+                    <select class="form-select lesson-type">
+                        <option value="${LESSON_TYPES.VIDEO}">Video Lesson</option>
+                        <option value="${LESSON_TYPES.QUIZ}">Quick Test</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="lesson-content-container">
+                <!-- Dynamically populated based on lesson type -->
+            </div>
+        </div>
+    `;
+
+    const removeModuleBtn = moduleElement.querySelector('.remove-module');
+    removeModuleBtn.addEventListener('click', () => moduleElement.remove());
+
+    const lessonTypeSelect = moduleElement.querySelector('.lesson-type');
+    const lessonContentContainer = moduleElement.querySelector('.lesson-content-container');
+    
+    lessonTypeSelect.addEventListener('change', (e) => {
+        const lessonType = e.target.value;
+        updateLessonContentUI(lessonContentContainer, lessonType);
+    });
+
+    updateLessonContentUI(lessonContentContainer, LESSON_TYPES.VIDEO);
+
+    modulesList.appendChild(moduleElement);
+}
+
+function updateLessonContentUI(container, lessonType) {
+    container.innerHTML = '';
+
+    switch(lessonType) {
+        case LESSON_TYPES.VIDEO:
+            container.innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label">YouTube Video Link</label>
+                    <input type="url" class="form-control video-link" 
+                           pattern="^(https?\:\/\/)?(www\.youtube\.com|youtu\.?be)\/.+$" 
+                           placeholder="Paste YouTube video link" required>
+                </div>
+            `;
+            break;
+        
+        case LESSON_TYPES.QUIZ:
+            container.innerHTML = `
+                <div class="quiz-builder">
+                    <div class="mb-3">
+                        <label class="form-label">Quiz Title</label>
+                        <input type="text" class="form-control quiz-title" required>
+                    </div>
+                    <div id="questionsContainer">
+                        <button type="button" class="btn btn-secondary add-question-btn">
+                            <i class="fas fa-plus"></i> Add Question
+                        </button>
+                    </div>
+                </div>
+            `;
+            setupQuizQuestionManagement(container);
+            break;
+        
+        
+    }
+}
+
+function setupQuizQuestionManagement(container) {
+    const addQuestionBtn = container.querySelector('.add-question-btn');
+    const questionsContainer = container.querySelector('#questionsContainer');
+
+    addQuestionBtn.addEventListener('click', () => {
+        const questionIndex = questionsContainer.children.length;
+        const questionElement = document.createElement('div');
+        questionElement.classList.add('card', 'mb-2', 'question-item');
+        questionElement.innerHTML = `
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Question ${questionIndex + 1}</label>
+                    <input type="text" class="form-control question-text" required>
+                </div>
+                <div class="answer-options">
+                    ${['A', 'B', 'C', 'D'].map((option, idx) => `
+                        <div class="input-group mb-2">
+                            <div class="input-group-text">
+                                <input class="form-check-input mt-0" type="radio" 
+                                       name="correctAnswer${questionIndex}" 
+                                       value="${idx}" 
+                                       aria-label="Radio for correct answer">
+                            </div>
+                            <input type="text" class="form-control" 
+                                   placeholder="Option ${option}" 
+                                   required>
+                        </div>
+                    `).join('')}
+                </div>
+                <button type="button" class="btn btn-danger btn-sm remove-question">
+                    <i class="fas fa-trash"></i> Remove Question
+                </button>
+            </div>
+        `;
+
+        const removeQuestionBtn = questionElement.querySelector('.remove-question');
+        removeQuestionBtn.addEventListener('click', () => questionElement.remove());
+
+        questionsContainer.appendChild(questionElement);
+    });
+}
+
+// Initialize module section on page load
+document.addEventListener('DOMContentLoaded', createModuleSection);
+
 
 function preprocessText(text) {
     // Convert to lowercase and remove special characters
@@ -590,300 +860,7 @@ document.getElementById('courseDescription').addEventListener('input', function(
         suggestTags(courseText);
     }
 });
-// Module and Lesson Management Script
 
-// Extend Firebase imports
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-// Add storage to Firebase initialization
-const storage = getStorage(app);
-
-// Module and Lesson Types
-const LESSON_TYPES = {
-    VIDEO: 'video',
-    QUIZ: 'quiz',
-    NOTES: 'notes'
-};
-
-// Module Creation UI and Management
-function createModuleSection() {
-    const moduleContainer = document.createElement('div');
-    moduleContainer.id = 'modulesContainer';
-    moduleContainer.innerHTML = `
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5>Course Modules</h5>
-                <button type="button" class="btn btn-primary" id="addModuleBtn">
-                    <i class="fas fa-plus"></i> Add Module
-                </button>
-            </div>
-            <div class="card-body" id="modulesList">
-                <!-- Dynamically added modules will appear here -->
-            </div>
-        </div>
-    `;
-
-    // Insert module section after course description
-    document.querySelector('#courseDescription').closest('.row').after(moduleContainer);
-
-    // Add module button event listener
-    document.getElementById('addModuleBtn').addEventListener('click', addNewModule);
-}
-
-function addNewModule() {
-    const modulesList = document.getElementById('modulesList');
-    const moduleIndex = modulesList.children.length + 1;
-
-    const moduleElement = document.createElement('div');
-    moduleElement.classList.add('module-item', 'card', 'mb-3');
-    moduleElement.innerHTML = `
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h6>Module ${moduleIndex}</h6>
-            <button type="button" class="btn btn-danger btn-sm remove-module">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Module Title</label>
-                    <input type="text" class="form-control module-title" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Lesson Type</label>
-                    <select class="form-select lesson-type">
-                        <option value="${LESSON_TYPES.VIDEO}">Video Lesson</option>
-                        <option value="${LESSON_TYPES.QUIZ}">Quick Test</option>
-                        <option value="${LESSON_TYPES.NOTES}">Course Notes</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="lesson-content-container">
-                <!-- Dynamically populated based on lesson type -->
-            </div>
-        </div>
-    `;
-
-    // Add module removal functionality
-    const removeModuleBtn = moduleElement.querySelector('.remove-module');
-    removeModuleBtn.addEventListener('click', () => moduleElement.remove());
-
-    // Add lesson type change event
-    const lessonTypeSelect = moduleElement.querySelector('.lesson-type');
-    const lessonContentContainer = moduleElement.querySelector('.lesson-content-container');
-    
-    lessonTypeSelect.addEventListener('change', (e) => {
-        const lessonType = e.target.value;
-        updateLessonContentUI(lessonContentContainer, lessonType);
-    });
-
-    // Initial lesson content UI setup
-    updateLessonContentUI(lessonContentContainer, LESSON_TYPES.VIDEO);
-
-    modulesList.appendChild(moduleElement);
-}
-
-function updateLessonContentUI(container, lessonType) {
-    container.innerHTML = ''; // Clear previous content
-
-    switch(lessonType) {
-        case LESSON_TYPES.VIDEO:
-            container.innerHTML = `
-                <div class="mb-3">
-                    <label class="form-label">YouTube Video Link</label>
-                    <input type="url" class="form-control video-link" 
-                           pattern="^(https?\:\/\/)?(www\.youtube\.com|youtu\.?be)\/.+$" 
-                           placeholder="Paste YouTube video link" required>
-                </div>
-            `;
-            break;
-        
-        case LESSON_TYPES.QUIZ:
-            container.innerHTML = `
-                <div class="quiz-builder">
-                    <div class="mb-3">
-                        <label class="form-label">Quiz Title</label>
-                        <input type="text" class="form-control quiz-title" required>
-                    </div>
-                    <div id="questionsContainer">
-                        <button type="button" class="btn btn-secondary add-question-btn">
-                            <i class="fas fa-plus"></i> Add Question
-                        </button>
-                    </div>
-                </div>
-            `;
-            setupQuizQuestionManagement(container);
-            break;
-        
-        case LESSON_TYPES.NOTES:
-            container.innerHTML = `
-                <div class="mb-3">
-                    <label class="form-label">Upload Course Notes (PDF)</label>
-                    <input type="file" class="form-control notes-file" 
-                           accept=".pdf" required>
-                </div>
-            `;
-            break;
-    }
-}
-
-function setupQuizQuestionManagement(container) {
-    const addQuestionBtn = container.querySelector('.add-question-btn');
-    const questionsContainer = container.querySelector('#questionsContainer');
-
-    addQuestionBtn.addEventListener('click', () => {
-        const questionIndex = questionsContainer.children.length;
-        const questionElement = document.createElement('div');
-        questionElement.classList.add('card', 'mb-2', 'question-item');
-        questionElement.innerHTML = `
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">Question ${questionIndex + 1}</label>
-                    <input type="text" class="form-control question-text" required>
-                </div>
-                <div class="answer-options">
-                    ${['A', 'B', 'C', 'D'].map((option, idx) => `
-                        <div class="input-group mb-2">
-                            <div class="input-group-text">
-                                <input class="form-check-input mt-0" type="radio" 
-                                       name="correctAnswer${questionIndex}" 
-                                       value="${idx}" 
-                                       aria-label="Radio for correct answer">
-                            </div>
-                            <input type="text" class="form-control" 
-                                   placeholder="Option ${option}" 
-                                   required>
-                        </div>
-                    `).join('')}
-                </div>
-                <button type="button" class="btn btn-danger btn-sm remove-question">
-                    <i class="fas fa-trash"></i> Remove Question
-                </button>
-            </div>
-        `;
-
-        // Remove question functionality
-        const removeQuestionBtn = questionElement.querySelector('.remove-question');
-        removeQuestionBtn.addEventListener('click', () => questionElement.remove());
-
-        questionsContainer.appendChild(questionElement);
-    });
-}
-
-// Modify course creation form submission to include modules
-document.getElementById('courseCreationForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    // Existing course validation
-    const instructorDetails = getInstructorDetails();
-    const user = auth.currentUser;
-    
-    if (!instructorDetails || !user) {
-        alert('Please log in to create a course');
-        return;
-    }
-
-    // Collect and validate modules
-    const moduleElements = document.querySelectorAll('.module-item');
-    const courseModules = [];
-
-    for (let moduleEl of moduleElements) {
-        const moduleTitle = moduleEl.querySelector('.module-title').value;
-        const lessonType = moduleEl.querySelector('.lesson-type').value;
-        
-        let moduleData = {
-            title: moduleTitle,
-            type: lessonType
-        };
-
-        // Process different lesson types
-        switch(lessonType) {
-            case LESSON_TYPES.VIDEO:
-                const videoLink = moduleEl.querySelector('.video-link').value;
-                if (!isValidYouTubeLink(videoLink)) {
-                    alert(`Invalid YouTube link in ${moduleTitle}`);
-                    return;
-                }
-                moduleData.videoLink = videoLink;
-                break;
-
-            case LESSON_TYPES.QUIZ:
-                const quizQuestions = [];
-                moduleEl.querySelectorAll('.question-item').forEach(questionEl => {
-                    const questionText = questionEl.querySelector('.question-text').value;
-                    const options = Array.from(questionEl.querySelectorAll('input[type="text"]:not(.question-text)'))
-                        .map(input => input.value);
-                    const correctAnswerIndex = questionEl.querySelector('input[type="radio"]:checked')?.value;
-
-                    quizQuestions.push({
-                        question: questionText,
-                        options: options,
-                        correctAnswer: correctAnswerIndex
-                    });
-                });
-                moduleData.quiz = quizQuestions;
-                break;
-
-            case LESSON_TYPES.NOTES:
-                const notesFile = moduleEl.querySelector('.notes-file').files[0];
-                if (notesFile) {
-                    try {
-                        const storageReference = storageRef(storage, `course_notes/${Date.now()}_${notesFile.name}`);
-                        const snapshot = await uploadBytes(storageReference, notesFile);
-                        moduleData.notesUrl = await getDownloadURL(snapshot.ref);
-                    } catch (error) {
-                        console.error('Error uploading notes:', error);
-                        alert('Failed to upload course notes');
-                        return;
-                    }
-                }
-                break;
-        }
-
-        courseModules.push(moduleData);
-    }
-
-    // Prepare main course data (similar to existing code)
-    const courseData = {
-        name: document.getElementById('courseName').value,
-        description: document.getElementById('courseDescription').value,
-        category: document.getElementById('courseCategory').value,
-        level: document.getElementById('skillLevel').value,
-        duration: document.getElementById('courseDuration').value,
-        instructor: instructorDetails.name,
-        instructorUid: instructorDetails.uid,
-        videoLink: document.getElementById('courseVideoLink').value,
-        tags: getSelectedTags() // Existing tag selection function
-    };
-
-    // Save course and get its ID
-    const coursesRef = ref(db, 'courses');
-    const newCourseRef = push(coursesRef);
-    
-    // Save course first
-    await set(newCourseRef, courseData);
-    const courseId = newCourseRef.key;
-
-    // Save modules with course ID reference
-    const courseModulesRef = ref(db, 'courseModules');
-    const newCourseModulesRef = ref(courseModulesRef, courseId);
-    await set(newCourseModulesRef, courseModules);
-
-    alert('Course and modules created successfully!');
-    window.location.href = 'instructor-course-management.html';
-});
-
-// Initialize module section on page load
-document.addEventListener('DOMContentLoaded', createModuleSection);
-
-// Utility function to get selected tags (from existing code)
-function getSelectedTags() {
-    const selectedTagElements = document.querySelectorAll('#selectedTags .selected-tag');
-    return Array.from(selectedTagElements).map(tagEl => 
-        tagEl.textContent.trim().replace('×', '').trim()
-    );
-}
 // Sidebar Toggle
 const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebar = document.getElementById('sidebar');
