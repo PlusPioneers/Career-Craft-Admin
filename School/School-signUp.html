@@ -184,7 +184,7 @@
             email: '',
             phone: '',
             address: '',
-            adminEmail: ''
+            currentAdministrator: '' // Changed from adminEmail
         };
 
         // School Name Form Submission
@@ -275,15 +275,14 @@
             }
 
             try {
-                // Create user with Firebase Authentication
-                const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, password);
+                // Create user with Firebase Authentication using Official School Email
+                const userCredential = await createUserWithEmailAndPassword(auth, schoolRegistrationData.email, password);
                 const user = userCredential.user;
 
-                // Complete school registration data
-                schoolRegistrationData.adminEmail = adminEmail;
+                // Store Admin Email as currentAdministrator in the database
+                schoolRegistrationData.currentAdministrator = adminEmail;
 
                 // Save school details to Firebase Realtime Database
-                // Now using UDISE Code as the unique identifier
                 await set(ref(database, 'schools/' + schoolRegistrationData.udiseCode), {
                     ...schoolRegistrationData,
                     userId: user.uid
