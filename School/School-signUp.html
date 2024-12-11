@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Career Craft - School Registration</title>
+    <title>Career Craft - School Management Dashboard</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -13,318 +13,451 @@
             background-color: #f4f6f9; 
             font-family: 'Arial', sans-serif;
         }
-        .form-container { 
+        .dashboard-container {
             background-color: white; 
             border-radius: 10px; 
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            padding: 30px;
-            max-width: 500px;
-            margin: 50px auto;
+            padding: 20px;
+            margin-top: 30px;
         }
         .brand-orange { color: #FF6B35; }
         .brand-green { color: #4ECB71; }
-        .contact-option {
-            border: 2px solid #f4f6f9;
-            margin-bottom: 10px;
-            padding: 10px;
+        .student-card {
+            margin-bottom: 15px;
+            border: 1px solid #e0e0e0;
             border-radius: 5px;
-            transition: all 0.3s ease;
+            padding: 15px;
             cursor: pointer;
         }
-        .contact-option:hover {
-            border-color: #4ECB71;
-            background-color: #f0f0f0;
+        .edit-modal-overlay, .course-levels-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
-        .contact-option.selected {
-            border-color: #FF6B35;
-            background-color: #f0f0f0;
+        .edit-modal, .course-levels-modal {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 500px;
+            max-width: 90%;
         }
-        #board-options .btn {
-            margin: 2px;
+        .course-level {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
         }
-        .footer {
-            background-color: #181515;
-            color: white;
-            padding: 2rem 0;
+        .course-level .lock-icon {
+            margin-right: 15px;
+            font-size: 24px;
+        }
+        .course-level.locked {
+            background-color: #f8f9fa;
+            color: #6c757d;
+        }
+        .course-level.unlocked {
+            background-color: #e9ecef;
+            color: #212529;
+        }
+        .lock-icon {
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="form-container" id="school-name-page">
+        <div class="dashboard-container">
             <h2 class="text-center mb-4">
                 <span class="brand-orange">CAREER</span> 
-                <span class="brand-green">CRAFT</span>
+                <span class="brand-green">CRAFT</span> 
+                - School Management Dashboard
             </h2>
-            <h3 class="text-center mb-4">School Registration - Basic Details</h3>
-            
-            <form id="school-name-form">
-                <div class="mb-3">
-                    <label for="school-name" class="form-label">Full School Name</label>
-                    <input type="text" class="form-control" id="school-name" placeholder="Enter complete school name" required>
-                </div>
-                <div class="mb-3">
-                    <label for="udise-code" class="form-label">UDISE Code</label>
-                    <input type="text" class="form-control" id="udise-code" placeholder="11-digit Unique Identification Code" required pattern="\d{11}">
-                </div>
-                <div id="name-error" class="alert alert-danger d-none"></div>
-                <button type="submit" class="btn btn-primary w-100">Next</button>
-            </form>
-        </div>
 
-        <div class="form-container d-none" id="board-page">
-            <h2 class="text-center mb-4">
-                <span class="brand-orange">CAREER</span> 
-                <span class="brand-green">CRAFT</span>
-            </h2>
-            <h3 class="text-center mb-4">School Registration - Board</h3>
-            
-            <form id="board-form">
-                <div class="mb-3">
-                    <p class="text-center">Select your school's academic board</p>
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="contact-option text-center" data-board="CBSE">
-                                <h5>CBSE</h5>
-                                <p>Central Board of Secondary Education</p>
-                            </div>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            School Information
                         </div>
-                        <div class="col-md-4">
-                            <div class="contact-option text-center" data-board="ICSE">
-                                <h5>ICSE</h5>
-                                <p>Indian Certificate of Secondary Education</p>
-                            </div>
+                        <div class="card-body">
+                            <p id="school-name">School Name: Loading...</p>
+                            <p id="school-udise">UDISE Code: Loading...</p>
                         </div>
-                        <div class="col-md-4">
-                            <div class="contact-option text-center" data-board="State Board">
-                                <h5>State Board</h5>
-                                <p>State-specific Education Board</p>
-                            </div>
+                    </div>
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            Student Statistics
+                        </div>
+                        <div class="card-body">
+                            <p>Total Students: <span id="total-students">0</span></p>
+                            <button class="btn btn-primary w-100" id="add-student-btn">+ Add New Student</button>
                         </div>
                     </div>
                 </div>
-                <div id="board-error" class="alert alert-danger d-none"></div>
-                <button type="submit" class="btn btn-primary w-100">Next</button>
-            </form>
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            Student Profiles
+                        </div>
+                        <div class="card-body" id="students-list">
+                            <!-- Students will be dynamically loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+    </div>
 
-        <div class="form-container d-none" id="contact-page">
-            <h2 class="text-center mb-4">
-                <span class="brand-orange">CAREER</span> 
-                <span class="brand-green">CRAFT</span>
-            </h2>
-            <h3 class="text-center mb-4">School Registration - Contact Details</h3>
-            
-            <form id="contact-form">
+    <!-- Edit Student Modal -->
+    <div id="edit-modal" class="edit-modal-overlay">
+        <div class="edit-modal">
+            <h3 class="text-center mb-4">Edit Student Profile</h3>
+            <form id="edit-student-form">
+                <input type="hidden" id="edit-student-id">
                 <div class="mb-3">
-                    <label for="school-email" class="form-label">Official School Email</label>
-                    <input type="email" class="form-control" id="school-email" placeholder="Enter school email address" required>
+                    <label class="form-label">Full Name</label>
+                    <input type="text" class="form-control" id="edit-name" required>
                 </div>
                 <div class="mb-3">
-                    <label for="school-phone" class="form-label">School Contact Number</label>
-                    <input type="tel" class="form-control" id="school-phone" placeholder="Enter school contact number" required>
+                    <label class="form-label">Grade</label>
+                    <select class="form-control" id="edit-grade">
+                        <option value="6">6th</option>
+                        <option value="7">7th</option>
+                        <option value="8">8th</option>
+                        <option value="9">9th</option>
+                        <option value="10">10th</option>
+                        <option value="11">11th</option>
+                        <option value="12">12th</option>
+                    </select>
                 </div>
                 <div class="mb-3">
-                    <label for="school-address" class="form-label">School Full Address</label>
-                    <textarea class="form-control" id="school-address" rows="3" placeholder="Enter complete school address" required></textarea>
-                </div>
-                <div id="contact-error" class="alert alert-danger d-none"></div>
-                <button type="submit" class="btn btn-primary w-100">Next</button>
-            </form>
-        </div>
-
-        <div class="form-container d-none" id="admin-page">
-            <h2 class="text-center mb-4">
-                <span class="brand-orange">CAREER</span> 
-                <span class="brand-green">CRAFT</span>
-            </h2>
-            <h3 class="text-center mb-4">School Registration - Admin Account</h3>
-            
-            <form id="admin-form">
-                <div class="mb-3">
-                    <label for="admin-email" class="form-label">Admin Email</label>
-                    <input type="email" class="form-control" id="admin-email" placeholder="Enter admin email" required>
+                    <label class="form-label">Stream</label>
+                    <select class="form-control" id="edit-stream">
+                        <option value="Computer Science">Computer Science</option>
+                        <option value="Biology">Biology</option>
+                        <option value="Commerce">Commerce</option>
+                    </select>
                 </div>
                 <div class="mb-3">
-                    <label for="admin-password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="admin-password" placeholder="Create admin password" required minlength="6">
+                    <label class="form-label">Interests</label>
+                    <textarea class="form-control" id="edit-interests" rows="3" placeholder="Comma-separated interests"></textarea>
                 </div>
-                <div class="mb-3">
-                    <label for="confirm-password" class="form-label">Confirm Password</label>
-                    <input type="password" class="form-control" id="confirm-password" placeholder="Confirm password" required minlength="6">
+                <div class="d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" id="close-modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
-                <div id="admin-error" class="alert alert-danger d-none"></div>
-                <button type="submit" class="btn btn-primary w-100">Complete Registration</button>
             </form>
         </div>
     </div>
-    
-    <!-- Footer -->
-    <footer class="footer mt-5">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <img src="https://github.com/PlusPioneers/CareerCraftProject/blob/main/Images/MOE%20Logo.png?raw=true" alt="Government Logo" class="mb-3" onclick="navigateTo(PATHS.home)" style="cursor: pointer;">
-                    <h5>
-                        <span class="brand-orange">CAREER</span> 
-                        <span class="brand-green">CRAFT</span>
-                    </h5>
-                    <p>Crafting Skills, Shaping Futures</p>
+
+    <!-- Course Levels Modal -->
+    <div id="course-levels-modal" class="course-levels-modal-overlay">
+        <div class="course-levels-modal">
+            <h3 class="text-center mb-4" id="student-name-title">Student Courses</h3>
+            <div id="course-levels-container">
+                <div class="course-level unlocked" data-level="Beginner">
+                    <span class="lock-icon">🔓</span>
+                    <div>
+                        <h5>Beginner Level</h5>
+                        <p>Introductory courses and foundational skills</p>
+                    </div>
                 </div>
-                <div class="col-md-6 text-md-end">
-                    <h5>Contact Information:</h5>
-                    <p><a href="#" onclick="navigateTo(PATHS.support)" class="text-white text-decoration-none">Email: support@careercraft.com</a></p>
-                    <p><a href="#" onclick="navigateTo(PATHS.contact)" class="text-white text-decoration-none">Phone: +91 9940587477</a></p>
-                    <p><a href="#" onclick="navigateTo(PATHS.about)" class="text-white text-decoration-none">Address: 123 Career Street, Education City, India.</a></p>
+                <div class="course-level locked" data-level="Intermediate">
+                    <span class="lock-icon">🔒</span>
+                    <div>
+                        <h5>Intermediate Level</h5>
+                        <p>Advanced skills and deeper learning</p>
+                    </div>
+                </div>
+                <div class="course-level locked" data-level="Advanced">
+                    <span class="lock-icon">🔒</span>
+                    <div>
+                        <h5>Advanced Level</h5>
+                        <p>Expert-level courses and specialized training</p>
+                    </div>
                 </div>
             </div>
-            <div class="text-center mt-4">
-                <p>© 2024 Career Craft. All Rights Reserved</p>
+            <div class="text-center mt-3">
+                <button class="btn btn-secondary" id="close-course-levels-modal">Close</button>
             </div>
         </div>
-    </footer>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { 
+    getAuth, 
+    signInWithEmailAndPassword,
+    onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { 
+    getDatabase, 
+    ref, 
+    get,
+    update,
+    remove,
+    push,
+    query,
+    orderByChild,
+    equalTo
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyD-azey3wiBUtr_ujjzrwl3vFc0rGwBWII",
-            authDomain: "career-craft-1667.firebaseapp.com",
-            databaseURL: "https://career-craft-1667-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "career-craft-1667",
-            storageBucket: "career-craft-1667.firebasestorage.app",
-            messagingSenderId: "616676439535",
-            appId: "1:616676439535:web:2019ad5c6d122728c6721a",
-            measurementId: "G-YND0YL7Y94"
-        };
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyD-azey3wiBUtr_ujjzrwl3vFc0rGwBWII",
+    authDomain: "career-craft-1667.firebaseapp.com",
+    databaseURL: "https://career-craft-1667-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "career-craft-1667",
+    storageBucket: "career-craft-1667.firebasestorage.app",
+    messagingSenderId: "616676439535",
+    appId: "1:616676439535:web:2019ad5c6d122728c6721a",
+    measurementId: "G-YND0YL7Y94"
+};
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const database = getDatabase(app);
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const database = getDatabase(app);
 
-        // School Registration Data
-        const schoolRegistrationData = {
-            name: '',
-            udiseCode: '',
-            board: '',
-            email: '',
-            phone: '',
-            address: '',
-            currentAdministrator: '' // Changed from adminEmail
-        };
+// Authentication State
+let currentSchool = null;
 
-        // School Name Form Submission
-        document.getElementById('school-name-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const schoolName = document.getElementById('school-name').value;
-            const udiseCode = document.getElementById('udise-code').value;
+// Wait for auth state to be determined
+const authPromise = new Promise((resolve, reject) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+        unsubscribe(); // Unsubscribe immediately to prevent multiple calls
+        if (user) {
+            resolve(user);
+        } else {
+            reject(new Error('Not authenticated'));
+        }
+    }, reject);
+});
 
-            // Basic validation
-            if (udiseCode.length !== 11) {
-                const nameError = document.getElementById('name-error');
-                nameError.textContent = 'UDISE Code must be 11 digits';
-                nameError.classList.remove('d-none');
-                return;
+// Load School and Students
+async function initializeDashboard() {
+    try {
+        // Wait for authentication
+        const user = await authPromise;
+
+        // Fetch schools data
+        const schoolsSnapshot = await get(ref(database, 'schools'));
+        const schools = schoolsSnapshot.val();
+
+        // Find the school that matches the current user's email
+        // Check both currentAdministrator and email fields
+        currentSchool = Object.values(schools).find(school => 
+            school.currentAdministrator === user.email || 
+            school.email === user.email
+        );
+
+        if (!currentSchool) {
+            throw new Error('School not found for this user');
+        }
+
+        // Set school information
+        document.getElementById('school-name').textContent = `School Name: ${currentSchool.name}`;
+        document.getElementById('school-udise').textContent = `UDISE Code: ${currentSchool.udiseCode}`;
+
+        // Load students for this school
+        loadStudents();
+    } catch (error) {
+        console.error('Error retrieving school data:', error);
+        window.location.href = 'School-Login.html';
+    }
+}
+
+// Load Students Function
+async function loadStudents() {
+    try {
+        const studentsSnapshot = await get(ref(database, 'students'));
+        const studentsList = document.getElementById('students-list');
+        studentsList.innerHTML = ''; // Clear existing students
+
+        let totalStudents = 0;
+        const studentsData = studentsSnapshot.val() || {};
+
+        // Filter students by current school's UDISE code
+        Object.entries(studentsData).forEach(([key, student]) => {
+            // Check if student's school UDISE code matches current school
+            if (student.school && student.school.udiseCode === currentSchool.udiseCode) {
+                totalStudents++;
+                const studentCard = document.createElement('div');
+                studentCard.classList.add('student-card');
+                studentCard.dataset.key = key;
+                studentCard.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5>${student.name}</h5>
+                        <div>
+                            <button class="btn btn-sm btn-primary edit-student" data-key="${key}">Edit</button>
+                            <button class="btn btn-sm btn-danger delete-student" data-key="${key}">Delete</button>
+                        </div>
+                    </div>
+                    <p>Grade: ${student.grade}</p>
+                    <p>Stream: ${student.stream}</p>
+                    <p>Interests: ${student.interests ? student.interests.join(', ') : 'None'}</p>
+                `;
+                studentsList.appendChild(studentCard);
             }
-
-            // Store data
-            schoolRegistrationData.name = schoolName;
-            schoolRegistrationData.udiseCode = udiseCode;
-
-            // Hide current page, show board selection
-            document.getElementById('school-name-page').classList.add('d-none');
-            document.getElementById('board-page').classList.remove('d-none');
         });
 
-        // Board Selection Logic
-        const boardOptions = document.querySelectorAll('.contact-option');
-        boardOptions.forEach(option => {
-            option.addEventListener('click', function() {
-                boardOptions.forEach(opt => opt.classList.remove('selected'));
-                this.classList.add('selected');
+        document.getElementById('total-students').textContent = totalStudents;
+
+        // Add event listeners for edit and delete buttons
+        document.querySelectorAll('.edit-student').forEach(button => {
+            button.addEventListener('click', openEditModal);
+        });
+        document.querySelectorAll('.delete-student').forEach(button => {
+            button.addEventListener('click', deleteStudent);
+        });
+
+        // Add event listener for student card to show course levels
+        document.querySelectorAll('.student-card').forEach(card => {
+            card.addEventListener('click', openCourseLevelsModal);
+        });
+    } catch (error) {
+        console.error('Error loading students:', error);
+        alert('Failed to load students.');
+    }
+}
+    
+        // Open Course Levels Modal
+        function openCourseLevelsModal(event) {
+            // Prevent triggering edit/delete buttons
+            if (event.target.closest('.edit-student, .delete-student')) return;
+    
+            const studentKey = event.currentTarget.dataset.key;
+            const studentName = event.currentTarget.querySelector('h5').textContent;
+    
+            // Set student name in modal title
+            document.getElementById('student-name-title').textContent = `${studentName}'s Courses`;
+    
+            // Show the modal
+            document.getElementById('course-levels-modal').style.display = 'flex';
+        }
+    
+        // Close Course Levels Modal
+        document.getElementById('close-course-levels-modal').addEventListener('click', () => {
+            document.getElementById('course-levels-modal').style.display = 'none';
+        });
+    
+        // Open Edit Modal
+        function openEditModal(event) {
+            const studentKey = event.target.dataset.key;
+            
+            // Find the student in the existing data
+            const studentRef = ref(database, `students/${studentKey}`);
+            get(studentRef).then((snapshot) => {
+                const student = snapshot.val();
+    
+                if (student) {
+                    document.getElementById('edit-student-id').value = studentKey;
+                    document.getElementById('edit-name').value = student.name;
+                    document.getElementById('edit-grade').value = student.grade;
+                    document.getElementById('edit-stream').value = student.stream;
+                    document.getElementById('edit-interests').value = student.interests ? student.interests.join(', ') : '';
+    
+                    document.getElementById('edit-modal').style.display = 'flex';
+                }
             });
-        });
-
-        // Board Form Submission
-        document.getElementById('board-form').addEventListener('submit', function(e) {
+        }
+    
+        // Save Edited Student
+        document.getElementById('edit-student-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const selectedBoard = document.querySelector('.contact-option.selected');
-            
-            if (!selectedBoard) {
-                const boardError = document.getElementById('board-error');
-                boardError.textContent = 'Please select a board';
-                boardError.classList.remove('d-none');
-                return;
-            }
-
-            // Store board data
-            schoolRegistrationData.board = selectedBoard.dataset.board;
-
-            // Hide board page, show contact page
-            document.getElementById('board-page').classList.add('d-none');
-            document.getElementById('contact-page').classList.remove('d-none');
-        });
-
-        // Contact Form Submission
-        document.getElementById('contact-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const schoolEmail = document.getElementById('school-email').value;
-            const schoolPhone = document.getElementById('school-phone').value;
-            const schoolAddress = document.getElementById('school-address').value;
-
-            // Store contact details
-            schoolRegistrationData.email = schoolEmail;
-            schoolRegistrationData.phone = schoolPhone;
-            schoolRegistrationData.address = schoolAddress;
-
-            // Hide contact page, show admin page
-            document.getElementById('contact-page').classList.add('d-none');
-            document.getElementById('admin-page').classList.remove('d-none');
-        });
-
-        document.getElementById('admin-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const adminEmail = document.getElementById('admin-email').value;
-            const password = document.getElementById('admin-password').value;
-            const confirmPassword = document.getElementById('confirm-password').value;
-            const adminError = document.getElementById('admin-error');
-
-            // Password validation
-            if (password !== confirmPassword) {
-                adminError.textContent = 'Passwords do not match';
-                adminError.classList.remove('d-none');
-                return;
-            }
-
+            const studentKey = document.getElementById('edit-student-id').value;
+            const updatedStudent = {
+                name: document.getElementById('edit-name').value,
+                grade: document.getElementById('edit-grade').value,
+                stream: document.getElementById('edit-stream').value,
+                interests: document.getElementById('edit-interests').value
+                    .split(',')
+                    .map(interest => interest.trim())
+                    .filter(interest => interest !== '')
+            };
+    
             try {
-                // Create user with Firebase Authentication using Official School Email
-                const userCredential = await createUserWithEmailAndPassword(auth, schoolRegistrationData.email, password);
-                const user = userCredential.user;
-
-                // Store Admin Email as currentAdministrator in the database
-                schoolRegistrationData.currentAdministrator = adminEmail;
-
-                // Save school details to Firebase Realtime Database
-                await set(ref(database, 'schools/' + schoolRegistrationData.udiseCode), {
-                    ...schoolRegistrationData,
-                    userId: user.uid
-                });
-
-                // Redirect to school dashboard
-                window.location.href = 'school-dashboard.html';
+                // Update the specific student record
+                await update(ref(database, `students/${studentKey}`), updatedStudent);
+                
+                document.getElementById('edit-modal').style.display = 'none';
+                alert('Student profile updated successfully!');
+                loadStudents(); // Refresh the student list
             } catch (error) {
-                adminError.textContent = `Error: ${error.message}`;
-                adminError.classList.remove('d-none');
+                console.error('Error updating student:', error);
+                alert('Failed to update student profile.');
             }
         });
+    
+        // Close Modal
+        document.getElementById('close-modal').addEventListener('click', () => {
+            document.getElementById('edit-modal').style.display = 'none';
+        });
+    
+        // Delete Student
+        async function deleteStudent(event) {
+            const studentKey = event.target.dataset.key;
+            
+            if (confirm('Are you sure you want to delete this student profile?')) {
+                try {
+                    // Delete the specific student record
+                    await remove(ref(database, `students/${studentKey}`));
+                    
+                    alert('Student profile deleted successfully!');
+                    loadStudents(); // Refresh the student list
+                } catch (error) {
+                    console.error('Error deleting student:', error);
+                    alert('Failed to delete student profile.');
+                }
+            }
+        }
+    
+        // Add New Student
+        document.getElementById('add-student-btn').addEventListener('click', async () => {
+            // Prompt for new student details
+            const studentData = {
+                name: prompt('Enter Student Full Name:'),
+                grade: prompt('Enter Student Grade (6-12):'),
+                stream: prompt('Enter Stream (Computer Science/Biology/Commerce):'),
+                interests: prompt('Enter Student Interests (comma-separated):')?.split(',').map(i => i.trim()),
+                school: {
+                    name: currentSchool.name,
+                    udiseCode: currentSchool.udiseCode,
+                    board: currentSchool.board,
+                    contact: {
+                        email: currentSchool.email,
+                        phone: currentSchool.phone
+                    }
+                }
+            };
+    
+            if (studentData.name && studentData.grade && studentData.stream) {
+                try {
+                    const studentsRef = ref(database, 'students');
+                    const newStudentRef = push(studentsRef);
+                    await update(newStudentRef, studentData);
+                    
+                    alert('New student added successfully!');
+                    loadStudents(); // Refresh the student list
+                } catch (error) {
+                    console.error('Error adding student:', error);
+                    alert('Failed to add new student.');
+                }
+            }
+        });
+    
+        // Initialize the dashboard when the page loads
+        initializeDashboard();
     </script>
 </body>
 </html>
