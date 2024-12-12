@@ -227,7 +227,6 @@
                                 <option value="Computer Science">Computer Science</option>
                                 <option value="Biology">Biology</option>
                                 <option value="Commerce">Commerce</option>
-                                <option value="English">English</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
@@ -368,9 +367,12 @@ function getInstructorDetails() {
     return storedDetails ? JSON.parse(storedDetails) : null;
 }
 
-function isValidYouTubeLink(url) {
+function isValidVideoLink(url) {
+    // Regex for YouTube and Google Drive video links
     const youtubeRegex = /^(https?\:\/\/)?(www\.youtube\.com|youtu\.?be)\/.+$/;
-    return youtubeRegex.test(url);
+    const googleDriveRegex = /^(https?\:\/\/)?(docs\.google\.com\/)(file\/d\/|open\?id=|uc\?id=).+$/;
+    
+    return youtubeRegex.test(url) || googleDriveRegex.test(url);
 }
 
 function getSelectedTags() {
@@ -489,13 +491,13 @@ document.getElementById('courseCreationForm').addEventListener('submit', async f
             // Process different lesson types
             switch(lessonType) {
                 case LESSON_TYPES.VIDEO:
-                    const videoLink = moduleEl.querySelector('.video-link').value;
-                    if (!isValidYouTubeLink(videoLink)) {
-                        alert(`Invalid YouTube link in ${moduleTitle}`);
-                        return;
-                    }
-                    moduleData.videoLink = videoLink;
-                    break;
+    const videoLink = moduleEl.querySelector('.video-link').value;
+    if (!isValidVideoLink(videoLink)) {
+        alert(`Invalid video link in ${moduleTitle}. Please use a valid YouTube or Google Drive link.`);
+        return;
+    }
+    moduleData.videoLink = videoLink;
+    break;
 
                 case LESSON_TYPES.QUIZ:
                     const quizQuestions = [];
@@ -611,19 +613,18 @@ function addNewModule() {
 }
 
 function updateLessonContentUI(container, lessonType) {
-    container.innerHTML = '';
-
     switch(lessonType) {
         case LESSON_TYPES.VIDEO:
             container.innerHTML = `
                 <div class="mb-3">
-                    <label class="form-label">YouTube Video Link</label>
+                    <label class="form-label">Video Link (YouTube or Google Drive)</label>
                     <input type="url" class="form-control video-link" 
-                           pattern="^(https?\:\/\/)?(www\.youtube\.com|youtu\.?be)\/.+$" 
-                           placeholder="Paste YouTube video link" required>
+                           pattern="^(https?\:\/\/)?(www\.youtube\.com|youtu\.?be\/.+|docs\.google\.com\/file\/d\/|docs\.google\.com\/open\?id=|docs\.google\.com\/uc\?id=).+$" 
+                           placeholder="Paste YouTube or Google Drive video link" required>
                 </div>
             `;
             break;
+    
         
         case LESSON_TYPES.QUIZ:
             container.innerHTML = `
@@ -690,6 +691,15 @@ function setupQuizQuestionManagement(container) {
 
 // Initialize module section on page load
 document.addEventListener('DOMContentLoaded', createModuleSection);
+
+
+
+
+
+
+
+
+
 
 
 function preprocessText(text) {
@@ -839,24 +849,7 @@ const TAG_DATABASE = {
         { name: 'Trade Basics', keywords: ['trade', 'goods', 'services', 'exchange'] },
         { name: 'Entrepreneurship Basics', keywords: ['startup', 'business', 'ideas', 'growth'] },
         { name: 'Teamwork and Leadership', keywords: ['team', 'leader', 'projects', 'goals'] }
-    ],
-    'english': [
-    { name: 'Grammar', keywords: ['grammar', 'syntax', 'sentence structure', 'parts of speech'] },
-    { name: 'Literature', keywords: ['literature', 'novels', 'poetry', 'short stories'] },
-    { name: 'Creative Writing', keywords: ['writing', 'stories', 'poetry', 'narratives'] },
-    { name: 'Linguistics', keywords: ['linguistics', 'phonetics', 'morphology', 'language structure'] },
-    { name: 'Vocabulary', keywords: ['vocabulary', 'words', 'definitions', 'word usage'] },
-    { name: 'Communication Skills', keywords: ['communication', 'speaking', 'presentation', 'conversation'] },
-    { name: 'Essay Writing', keywords: ['essay', 'writing', 'argumentative', 'expository'] },
-    { name: 'Reading Comprehension', keywords: ['reading', 'comprehension', 'analysis', 'interpretation'] },
-    { name: 'Shakespearean Studies', keywords: ['shakespeare', 'plays', 'drama', 'elizabethan era'] },
-    { name: 'Poetry Analysis', keywords: ['poetry', 'analysis', 'verses', 'rhyme'] },
-    { name: 'English for Competitive Exams', keywords: ['exams', 'english', 'tests', 'questions'] },
-    { name: 'Public Speaking', keywords: ['public speaking', 'speech', 'debates', 'oratory'] },
-    { name: 'Phonetics', keywords: ['phonetics', 'pronunciation', 'speech sounds', 'articulation'] },
-    { name: 'Drama and Theatre', keywords: ['drama', 'theatre', 'plays', 'acting'] },
-    { name: 'Classic Literature', keywords: ['classics', 'authors', 'timeless works', 'literary analysis'] }
-]
+    ]
 
 };
 function getPossibleTags(keywords) {
@@ -878,6 +871,11 @@ document.getElementById('courseDescription').addEventListener('input', function(
         suggestTags(courseText);
     }
 });
+// Module and Lesson Management Script
+
+
+
+
 
 // Sidebar Toggle
 const sidebarToggle = document.getElementById('sidebarToggle');
